@@ -6,10 +6,39 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 container.appendChild(renderer.domElement);
 
-// Adding sunlight
+// Adding a light source
 const light = new THREE.DirectionalLight(0xffffff, 1);
-light.position.set(5, 10, 7); // Position of the light source
+light.position.set(5, 10, 7);
 scene.add(light);
+
+// Orbit controls for camera rotation
+let isRightMouseDown = false;
+let previousMousePosition = { x: 0, y: 0 };
+
+function rotateCamera(event) {
+    if (isRightMouseDown) {
+        const deltaX = event.clientX - previousMousePosition.x;
+        const deltaY = event.clientY - previousMousePosition.y;
+
+        const rotationSpeed = 0.005;
+        camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -deltaX * rotationSpeed); // Horizontal rotation
+        camera.position.y += deltaY * rotationSpeed; // Vertical rotation
+
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        previousMousePosition = { x: event.clientX, y: event.clientY };
+    }
+}
+
+window.addEventListener("mousedown", (event) => {
+    if (event.button === 2) isRightMouseDown = true;
+});
+window.addEventListener("mouseup", (event) => {
+    if (event.button === 2) isRightMouseDown = false;
+});
+window.addEventListener("mousemove", rotateCamera);
+
+// Disabling context menu on right-click
+window.addEventListener("contextmenu", (event) => event.preventDefault());
 
 // Adding a grid of cubes
 const cubeSize = 1;
