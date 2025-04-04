@@ -3,8 +3,17 @@ body {
     overflow: hidden;
 }
 
-#game-container {
+#currency-counter {
     position: absolute;
-    width: 100vw;
-    height: 100vh;
+    top: 10px;
+    left: 10px;
+    font-size: 20px;
+    color: white;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px;
+    border-radius: 5px;
+}
+
+canvas {
+    display: block;
 }
