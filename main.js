@@ -47,6 +47,10 @@ camera.lookAt(0, 0, 0);
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
+// Variables to track mouse movement
+let isDragging = false;
+let clickStart = { x: 0, y: 0 };
+
 function createExplosion(position) {
     const particleGeometry = new THREE.SphereGeometry(0.1, 4, 4);
     const particleMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
@@ -68,50 +72,48 @@ function createExplosion(position) {
     animateExplosion();
 }
 
-function onMouseClick(event) {
-    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-    raycaster.setFromCamera(mouse, camera);
-    const intersects = raycaster.intersectObjects(cubes);
-
-    if (intersects.length > 0) {
-        const clickedCube = intersects[0].object;
-        createExplosion(clickedCube.position);
-        scene.remove(clickedCube);
-        cubes.splice(cubes.indexOf(clickedCube), 1);
-        currency++;
-        currencyCounter.textContent = `Currency: ${currency}`;
-    }
-}
-
-window.addEventListener('click', onMouseClick);
-
-// Orbit controls: Drag mouse to rotate camera
-let isDragging = false;
-let previousMousePosition = { x: 0, y: 0 };
-
 function onMouseDown(event) {
-    isDragging = true;
-    previousMousePosition = { x: event.clientX, y: event.clientY };
+    isDragging = false;
+    clickStart.x = event.clientX;
+    clickStart.y = event.clientY;
 }
 
 function onMouseMove(event) {
-    if (!isDragging) return;
+    const deltaX = event.clientX - clickStart.x;
+    const deltaY = event.clientY - clickStart.y;
 
-    const deltaX = event.clientX - previousMousePosition.x;
-    const deltaY = event.clientY - previousMousePosition.y;
-    const rotationSpeed = 0.01;
+    // Check if the mouse has moved enough to qualify as dragging
+    if (Math.abs(deltaX) > 2 || Math.abs(deltaY) > 2) {
+        isDragging = true;
 
-    camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -deltaX * rotationSpeed);
-    camera.position.y -= deltaY * rotationSpeed * 10;
-    camera.lookAt(new THREE.Vector3(0, 0, 0));
+        const rotationSpeed = 0.005;
+        camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -deltaX * rotationSpeed);
+        camera.position.y -= deltaY * rotationSpeed * 10;
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
 
-    previousMousePosition = { x: event.clientX, y: event.clientY };
+        clickStart.x = event.clientX;
+        clickStart.y = event.clientY;
+    }
 }
 
-function onMouseUp() {
-    isDragging = false;
+function onMouseUp(event) {
+    // If not dragging, it's a click
+    if (!isDragging) {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(cubes);
+
+        if (intersects.length > 0) {
+            const clickedCube = intersects[0].object;
+            createExplosion(clickedCube.position);
+            scene.remove(clickedCube);
+            cubes.splice(cubes.indexOf(clickedCube), 1);
+            currency++;
+            currencyCounter.textContent = `Currency: ${currency}`;
+        }
+    }
 }
 
 container.addEventListener('mousedown', onMouseDown);
