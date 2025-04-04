@@ -6,54 +6,28 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 container.appendChild(renderer.domElement);
 
-// Adding a light source
-const light = new THREE.DirectionalLight(0xffffff, 1);
-light.position.set(5, 10, 7);
-scene.add(light);
+// Adding ambient and directional light
+const ambientLight = new THREE.AmbientLight(0x404040, 0.5); // Soft ambient light
+scene.add(ambientLight);
 
-// Orbit controls for camera rotation
-let isRightMouseDown = false;
-let previousMousePosition = { x: 0, y: 0 };
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1); // Sunlight-like light
+directionalLight.position.set(5, 10, 7);
+scene.add(directionalLight);
 
-function rotateCamera(event) {
-    if (isRightMouseDown) {
-        const deltaX = event.clientX - previousMousePosition.x;
-        const deltaY = event.clientY - previousMousePosition.y;
-
-        const rotationSpeed = 0.005;
-        camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -deltaX * rotationSpeed); // Horizontal rotation
-        camera.position.y += deltaY * rotationSpeed; // Vertical rotation
-
-        camera.lookAt(new THREE.Vector3(0, 0, 0));
-        previousMousePosition = { x: event.clientX, y: event.clientY };
-    }
-}
-
-window.addEventListener("mousedown", (event) => {
-    if (event.button === 2) isRightMouseDown = true;
-});
-window.addEventListener("mouseup", (event) => {
-    if (event.button === 2) isRightMouseDown = false;
-});
-window.addEventListener("mousemove", rotateCamera);
-
-// Disabling context menu on right-click
-window.addEventListener("contextmenu", (event) => event.preventDefault());
-
-// Adding a grid of cubes
+// Cube grid setup
 const cubeSize = 1;
 const gridSize = 15;
 const cubes = [];
 const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
 
 function getRandomColor() {
-    return Math.floor(Math.random() * 16777215); // Generate a random color
+    return Math.floor(Math.random() * 16777215); // Random hex color
 }
 
 for (let x = 0; x < gridSize; x++) {
     for (let y = 0; y < gridSize; y++) {
         for (let z = 0; z < gridSize; z++) {
-            const cubeMaterial = new THREE.MeshLambertMaterial({ color: getRandomColor() });
+            const cubeMaterial = new THREE.MeshStandardMaterial({ color: getRandomColor() });
             const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
             cube.position.set(x - gridSize / 2, y - gridSize / 2, z - gridSize / 2);
             scene.add(cube);
@@ -62,9 +36,10 @@ for (let x = 0; x < gridSize; x++) {
     }
 }
 
-camera.position.z = 40;
+camera.position.set(25, 25, 25);
+camera.lookAt(0, 0, 0);
 
-// Raycaster for precise click detection
+// Raycaster for click detection
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
@@ -83,6 +58,28 @@ function onMouseClick(event) {
 }
 
 window.addEventListener('click', onMouseClick);
+
+// Camera rotation using arrow keys
+function onArrowKey(event) {
+    const rotationSpeed = 0.05;
+    switch (event.key) {
+        case "ArrowUp":
+            camera.position.y += rotationSpeed * 10;
+            break;
+        case "ArrowDown":
+            camera.position.y -= rotationSpeed * 10;
+            break;
+        case "ArrowLeft":
+            camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), rotationSpeed);
+            break;
+        case "ArrowRight":
+            camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -rotationSpeed);
+            break;
+    }
+    camera.lookAt(new THREE.Vector3(0, 0, 0));
+}
+
+window.addEventListener('keydown', onArrowKey);
 
 // Animation loop
 function animate() {
