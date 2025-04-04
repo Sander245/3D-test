@@ -6,17 +6,26 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 container.appendChild(renderer.domElement);
 
+// Adding sunlight
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5, 10, 7); // Position of the light source
+scene.add(light);
+
 // Adding a grid of cubes
 const cubeSize = 1;
 const gridSize = 15;
 const cubes = [];
 const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
-const cubeMaterial = new THREE.MeshBasicMaterial({ color: 0x0077ff });
+
+function getRandomColor() {
+    return Math.floor(Math.random() * 16777215); // Generate a random color
+}
 
 for (let x = 0; x < gridSize; x++) {
     for (let y = 0; y < gridSize; y++) {
         for (let z = 0; z < gridSize; z++) {
-            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial.clone());
+            const cubeMaterial = new THREE.MeshLambertMaterial({ color: getRandomColor() });
+            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
             cube.position.set(x - gridSize / 2, y - gridSize / 2, z - gridSize / 2);
             scene.add(cube);
             cubes.push(cube);
@@ -26,7 +35,7 @@ for (let x = 0; x < gridSize; x++) {
 
 camera.position.z = 40;
 
-// Raycaster for detecting clicks on cubes
+// Raycaster for precise click detection
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 
