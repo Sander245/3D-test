@@ -1,106 +1,133 @@
-let grid = [];
-let gridSize = 15;
-let cubeSize = 20; // Size of each cube
-let angleX = 0, angleY = 0;
-let isDragging = false;
-let previousMouse = { x: 0, y: 0 };
-let zoom = 600;
+// Setting up the scene, camera, and renderer
+const container = document.getElementById('game-container');
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+container.appendChild(renderer.domElement);
+
+// Currency counter
 let currency = 0;
+const currencyCounter = document.getElementById("currency-counter");
 
-// Setup function for p5.js
-function setup() {
-    createCanvas(windowWidth, windowHeight, WEBGL);
+// Ambient and directional light
+const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+scene.add(ambientLight);
 
-    // Disable browser's default pinch-to-zoom
-    document.body.addEventListener('gesturestart', (e) => e.preventDefault());
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+directionalLight.position.set(5, 10, 7);
+scene.add(directionalLight);
 
-    // Create a grid of cubes
-    for (let x = 0; x < gridSize; x++) {
-        for (let y = 0; y < gridSize; y++) {
-            for (let z = 0; z < gridSize; z++) {
-                let color = [random(255), random(255), random(255)];
-                grid.push({ x: x * cubeSize, y: y * cubeSize, z: z * cubeSize, color });
-            }
+// Cube grid setup
+const cubeSize = 1;
+const gridSize = 15;
+const cubes = [];
+const cubeGeometry = new THREE.BoxGeometry(cubeSize, cubeSize, cubeSize);
+
+function getRandomColor() {
+    return Math.floor(Math.random() * 16777215); // Random hex color
+}
+
+for (let x = 0; x < gridSize; x++) {
+    for (let y = 0; y < gridSize; y++) {
+        for (let z = 0; z < gridSize; z++) {
+            const cubeMaterial = new THREE.MeshStandardMaterial({ color: getRandomColor() });
+            const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+            cube.position.set(x - gridSize / 2, y - gridSize / 2, z - gridSize / 2);
+            scene.add(cube);
+            cubes.push(cube);
         }
     }
 }
 
-// Draw function for p5.js
-function draw() {
-    background(30);
-    lights();
+camera.position.set(25, 25, 25);
+camera.lookAt(0, 0, 0);
 
-    // Camera controls
-    translate(0, 0, -zoom);
-    rotateX(angleX);
-    rotateY(angleY);
+// Raycaster for click detection
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
 
-    // Draw cubes
-    for (let i = grid.length - 1; i >= 0; i--) {
-        const cube = grid[i];
-        push();
-        translate(cube.x - (gridSize / 2) * cubeSize, cube.y - (gridSize / 2) * cubeSize, cube.z - (gridSize / 2) * cubeSize);
-        fill(cube.color);
-        stroke(0);
-        box(cubeSize);
-        pop();
+function createExplosion(position) {
+    const particleGeometry = new THREE.SphereGeometry(0.1, 4, 4);
+    const particleMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+    particle.position.copy(position);
+    scene.add(particle);
+
+    const velocity = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5);
+    let lifespan = 20;
+
+    function animateExplosion() {
+        if (lifespan-- > 0) {
+            particle.position.add(velocity);
+            requestAnimationFrame(animateExplosion);
+        } else {
+            scene.remove(particle);
+        }
     }
-
-    // Display currency counter
-    document.getElementById('currency-counter').textContent = `Currency: ${currency}`;
+    animateExplosion();
 }
 
-// Mouse drag for camera orbit
-function mouseDragged() {
-    if (!isDragging) return;
-    angleY += (mouseX - previousMouse.x) * 0.01;
-    angleX += (mouseY - previousMouse.y) * 0.01;
-    previousMouse = { x: mouseX, y: mouseY };
+function onMouseClick(event) {
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(cubes);
+
+    if (intersects.length > 0) {
+        const clickedCube = intersects[0].object;
+        createExplosion(clickedCube.position);
+        scene.remove(clickedCube);
+        cubes.splice(cubes.indexOf(clickedCube), 1);
+        currency++;
+        currencyCounter.textContent = `Currency: ${currency}`;
+    }
 }
 
-// Detect block click
-function mousePressed() {
+window.addEventListener('click', onMouseClick);
+
+// Orbit controls: Drag mouse to rotate camera
+let isDragging = false;
+let previousMousePosition = { x: 0, y: 0 };
+
+function onMouseDown(event) {
     isDragging = true;
-    previousMouse = { x: mouseX, y: mouseY };
-
-    // Convert mouse click to 3D space
-    const ray = createVector(mouseX - width / 2, mouseY - height / 2, -zoom);
-    for (let i = grid.length - 1; i >= 0; i--) {
-        let cube = grid[i];
-        let cubeCenter = createVector(
-            cube.x - (gridSize / 2) * cubeSize,
-            cube.y - (gridSize / 2) * cubeSize,
-            cube.z - (gridSize / 2) * cubeSize
-        );
-
-        if (p5.Vector.dist(ray, cubeCenter) < cubeSize / 2) {
-            // Remove clicked cube
-            grid.splice(i, 1);
-
-            // Add explosion effect
-            for (let j = 0; j < 10; j++) {
-                let particle = {
-                    x: cubeCenter.x,
-                    y: cubeCenter.y,
-                    z: cubeCenter.z,
-                    velocity: createVector(random(-1, 1), random(-1, 1), random(-1, 1)),
-                    lifespan: 30,
-                };
-                grid.push(particle); // Add particle effect to grid
-            }
-
-            currency++;
-            break;
-        }
-    }
+    previousMousePosition = { x: event.clientX, y: event.clientY };
 }
 
-// Mouse release for camera control
-function mouseReleased() {
+function onMouseMove(event) {
+    if (!isDragging) return;
+
+    const deltaX = event.clientX - previousMousePosition.x;
+    const deltaY = event.clientY - previousMousePosition.y;
+    const rotationSpeed = 0.01;
+
+    camera.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -deltaX * rotationSpeed);
+    camera.position.y -= deltaY * rotationSpeed * 10;
+    camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+    previousMousePosition = { x: event.clientX, y: event.clientY };
+}
+
+function onMouseUp() {
     isDragging = false;
 }
 
-// Mouse wheel for zoom
-function mouseWheel(event) {
-    zoom += event.deltaY * 5;
+container.addEventListener('mousedown', onMouseDown);
+container.addEventListener('mousemove', onMouseMove);
+container.addEventListener('mouseup', onMouseUp);
+
+// Zoom with mouse wheel
+function onWheel(event) {
+    camera.position.z += event.deltaY * 0.01;
 }
+
+container.addEventListener('wheel', onWheel);
+
+// Animation loop
+function animate() {
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+}
+animate();
